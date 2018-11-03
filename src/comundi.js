@@ -4,6 +4,7 @@ const assert = require('assert');
 
 const puppeteer = require('puppeteer');
 const _ = require('lodash');
+const moment = require('moment');
 
 const baseUrl = 'https://www.comundi.fr/';
 
@@ -13,37 +14,86 @@ const getText = (page, selector) => {
   }, selector);
 };
 
+const getTextByRegex = (page, params) => {
+  return page.evaluate((params) => {
+    const arr = [...document.querySelectorAll(params.baseSelector)].filter((e) => {
+      const regex = new RegExp(params.regex);
+      return regex.test(e[params.applyOn]);
+    }).map(e => (e ? e.innerText.trim() : null));
+    if (arr && arr.length) {
+      return arr[0];
+    }
+    return null;
+  }, params);
+};
+
+const parseDate = (dateString, format) => {
+  const m = moment(dateString, format, 'fr');
+  console.log('---> parsed', dateString, ' ==== ', m.format());
+  return {
+    date: moment(m).format(),
+    timestamp: moment(m).format('X'),
+    text: moment(m).format('dddd Do MMMM YYYY'),
+  };
+};
+
 const browseItem = async (browser, url) => {
   const page = await browser.newPage();
   await page.goto(url);
 
   const title = await getText(page, 'h1');
   const description = await getText(page, 'h2.small');
-  const categories = await page.evaluate(() => {
-    const res = [... document.querySelectorAll('.easy-breadcrumb li:not(:first-child):not(:last-child) a')].map((el, i) => {
-      return {
-        level: i,
-        name: el.innerText,
-        url: el.href,
-      };
-    });
-    return res || [];
-  });
   const sessions = await page.evaluate(() => {
-   const res = [...document.querySelectorAll('.dates-et-lieux')].map((session) => {
-     return {
-       location: session.querySelector('.adresse').innerText,
-       dates: [...session.querySelectorAll('ul > li')].map(item => item.innerText),
-     };
-   });
-   return res;
+    return [...document.querySelectorAll('#filtre-data.sessions tr')]
+    .map(e => {
+      const startDateSel = e.querySelector('span[itemprop="startDate"]')
+      const endDateSel = e.querySelector('span[itemprop="endDate"]')
+      const location = e.attributes['data-ville'].value;
+      let startDate = null;
+      if (startDateSel && startDateSel.attributes && startDateSel.attributes.content) {
+        startDate = startDateSel.attributes.content.value;
+      }
+      let endDate = null;
+      if (endDateSel && endDateSel.attributes && endDateSel.attributes.content) {
+        endDate = endDateSel.attributes.content.value;
+      }
+      return { startDate, endDate, location };
+    });
   });
+  sessions.forEach((session) => {
+    if (session.startDate) {
+      session.begin = parseDate(session.startDate, 'YYYY-MM-DD');
+    } else {
+      session.begin = null;
+    }
+    if (session.endDate) {
+      session.end = parseDate(session.endDate, 'YYYY-MM-DD');
+    } else {
+      session.end = session.begin;
+    }
+  });
+
   // const level = await getText(page, 'body > main > div > div.group-content.layout-center.layout-center--mobile.clearfix > div > div.group-left > div > div > div > div.field.field--name-level-of-difficulty.field--type-entity-reference.field--label-hidden.field__item > div');
-  const duration = await getText(page, 'div.col-sm-8 > table > tbody > tr:nth-child(1) > th');
+  // MATCHING
+  // 1 jour - 7 h
+  // 3 jours - 21 h
+  // 3 heures - 21 h
+  // 7heures
+  // 1heure
+  // 10 heures
+  //
+  // NOT MATCHING
+  // 30 minutes
+  // 1 lol - 7 h
+  const duration = await getTextByRegex(page, {
+    regex: '^.{0,5}(jour|h).*$',
+    baseSelector: '.fiche th',
+    applyOn: 'innerText',
+  });
   // const location = await getText(page, 'body > main > div > div.group-content.layout-center.layout-center--mobile.clearfix > div > div.group-left > div > div > div > div.field.field--name-location-of-training.field--type-entity-reference.field--label-hidden.field__items > div > div');
   const public = await getText(page, '#public div')
   const goal = await getText(page, '#objectifs > div');
-  const requirements = await getText(page, '#pre-requis > div');
+  const prerequisites = await getText(page, '#pre-requis > div');
   const priceHt = await page.evaluate(() => {
     const pattern = /^[0-9\s]{1,9}[,.]{1}[0-9]{0,2}\s{0,}€\sHT$/; // 995.00  € HT OR 2 245.00  € HT
     const res = [...document.querySelectorAll('.fiche td')].filter(e => pattern.test(e.innerText)).map(e => e.innerText)
@@ -53,8 +103,64 @@ const browseItem = async (browser, url) => {
   if (ref) {
     ref = ref.split(' ')[1].trim();
   }
+  const formateurs = await page.evaluate(() => {
+    return [...document.querySelectorAll('#intervenants a.link-block')].map(e => {
+      let name = e.querySelector('.h5')
+      let description = null;
+      if (name) {
+        name = name.innerText;
+      }
+      if (e && name) {
+        description = e.innerText.split(name)[1].split('En savoir plus')[0].trim();
+      }
+      return {
+        name,
+        description,
+      };
+    });
+  });
   const pointsforts = await getText(page, '#points-forts');
   const program = await getText(page, '#programme+div');
+
+  const getParentCategory = async (page) => {
+    return await page.evaluate(() => {
+      const parents = [...document.querySelectorAll('#wo-breadcrumbs a')].filter(e => {
+        const regex = new RegExp('^https://www.comundi.fr/.{1,}$');
+        return regex.test(e.href)
+      });
+
+      if (parents.length) {
+        return {
+          name: parents[0].innerText,
+          url: parents[0].href,
+        };
+      } else {
+        return null;
+      }
+    });
+  };
+
+  const getAllParentCategories = async (page, categories, i) => {
+    const category = await getParentCategory(page);
+    console.log('Category', i, ':', category);
+    if (category) {
+      categories.push(category);
+      await page.goto(category.url);
+      await page.waitForSelector('#wo-breadcrumbs');
+      return getAllParentCategories(page, categories, i + 1);
+    }
+    return categories;
+  };
+
+  let categories = await getAllParentCategories(page, [], 0)
+  categories = categories.map((cat, i, arr) => {
+    // reverting the array to find levels
+    return {
+      ...cat,
+      level: arr.length - i - 1,
+    };
+  });
+
   const item = {
     url,
     sessions,
@@ -65,26 +171,14 @@ const browseItem = async (browser, url) => {
     duration,
     public,
     goal,
-    requirements,
+    prerequisites,
     priceHt,
     ref,
     program,
+    formateurs,
   };
   await page.close();
   return item;
-};
-
-const browseBatchAndGoNext = async (browser, batches, index, lastRes, db) => {
-  if (index === batches.length) {
-    console.log('DONE', lastRes);
-    return lastRes;
-  }
-  const res = await Promise.all(batches[index].map((itemUrl) => browseItem(browser, itemUrl)));
-  const result = res;
-  console.log(`Saving results... [${index}]:`, result.length);
-  await db.collection('comundi').insertMany(result);
-  console.log(`SAVED batch ${index + 1} of ${batches.length}`);
-  return browseBatchAndGoNext(browser, batches, index + 1, result, db);
 };
 
 const goNextPage = async (page, currentPage) => {
@@ -175,85 +269,131 @@ const loopBatches = async (batches, apply, onEnd) => {
 
   const browser = await puppeteer.launch({ headless: true });
 
-  const categories = await getAllCategoryLinksSequence(browser);
-  console.log(`Got #${categories.length} categories`);
+// FETCH ALL ITEMS AND STORE IN DB
+//  const categories = await getAllCategoryLinksSequence(browser);
+//  console.log(`Got #${categories.length} categories`);
+////
+//  const categoriesBatches = _.chunk(categories, 10);
+//  const subcategories = await loopBatches(categoriesBatches, async (categories) => {
+//    return loopSequence(async (prevRes, i, batch) => {
+//      console.log(`--> ${i}`);
+//      const res = await getAllSubCategoryLinksSequence(browser, batch[i]);
+//      return [...prevRes, ...res];
+//    }, categories, (res, i, batch) => {
+//      console.log(`Batch #${i}, done`);
+//      if (i >= batch.length - 1) {
+//        return false;
+//      }
+//      return true;
+//    }, (res) => {
+//      console.log(`Got #${res.length} subcategories`);
+//      return res;
+//    }, 0, []);
+//  }, async (res) => {
+//    const flat = _.flatten(res);
+//    console.log(`ALL PROCESSED DONE, GOT #${flat.length} subcategories`);
+//    return flat;
+//  });
+////
+//  //// Sample
+//  //// const subcategories = [
+//  ////   'https://www.comundi.fr/social-et-medico-social-1/formation-evaluation-et-demarches-qualite-1.html',
+//  ////   'https://www.comundi.fr/social-et-medico-social-1/formation-expertise-metiers-1.html',
+//  //// ];
+////
+//  const subcategoriesBatches = _.chunk(subcategories, 30);
+//  const items = await loopBatches(subcategoriesBatches, async (subcategories) => {
+//    return loopSequence((async (prevRes, i, batch) => {
+//      console.log(`--> ${i}`);
+//      const res = await getAllItemsUrlFromPage(browser, batch[i]);
+//      return [...prevRes, ...res];
+//    }), subcategories, async (res, i, batch) => {
+//      console.log(`Batch #${i}, done`);
+//      if (i >= batch.length - 1) {
+//        return false;
+//      }
+//      return true;
+//    }, async (res) => {
+//      console.log(`Got #${res.length} items`);
+//      return res;
+//    }, 0, []);
+//  }, async (res) => {
+//    const flat = _.flatten(res);
+//    console.log(`ALL PROCESSED DONE`);
+//    return flat;
+//  });
+////
+//  await db.collection('comundiItems').insertMany(items.map(e => { return { url: e }}));
+//
+///// END
 
-  // const categoriesBatches = _.chunk(categories, 10);
-  // const subcategories = await loopBatches(categoriesBatches, async (categories) => {
-  //  return loopSequence(async (prevRes, i, batch) => {
-  //    console.log(`--> ${i}`);
-  //    const res = await getAllSubCategoryLinksSequence(browser, batch[i]);
-  //    return [...prevRes, ...res];
-  //  }, categories, (res, i, batch) => {
-  //    console.log(`Batch #${i}, done`);
-  //    if (i >= batch.length - 1) {
-  //      return false;
-  //    }
-  //    return true;
-  //  }, (res) => {
-  //    console.log(`Got #${res.length} subcategories`);
-  //    return res;
-  //  }, 0, []);
-  // }, async (res) => {
-  //  const flat = _.flatten(res);
-  //  console.log(`ALL PROCESSED DONE, GOT #${flat.length} subcategories`);
-  //  return flat;
-  // });
 
-  // Sample
-  // const subcategories = [
-  //   'https://www.comundi.fr/social-et-medico-social-1/formation-evaluation-et-demarches-qualite-1.html',
-  //   'https://www.comundi.fr/social-et-medico-social-1/formation-expertise-metiers-1.html',
-  // ];
 
-  // const subcategoriesBatches = _.chunk(subcategories, 30);
-  // const items = await loopBatches(subcategoriesBatches, async (subcategories) => {
-  //   return loopSequence((async (prevRes, i, batch) => {
-  //     console.log(`--> ${i}`);
-  //     const res = await getAllItemsUrlFromPage(browser, batch[i]);
-  //     return [...prevRes, ...res];
-  //   }), subcategories, async (res, i, batch) => {
-  //     console.log(`Batch #${i}, done`);
-  //     if (i >= batch.length - 1) {
-  //       return false;
-  //     }
-  //     return true;
-  //   }, async (res) => {
-  //     console.log(`Got #${res.length} items`);
-  //     return res;
-  //   }, 0, []);
-  // }, async (res) => {
-  //   const flat = _.flatten(res);
-  //   console.log(`ALL PROCESSED DONE`);
-  //   return flat;
-  // });
 
-  // Sample
-  const items = [ 'https://www.comundi.fr/formation-evaluation-et-demarches-qualite/formation-mettre-en-place-une-evaluation-externe.html',
-  'https://www.comundi.fr/formation-pilotage-strategique-et-management-des-etablissements/formation-piloter-un-projet-systemique-de-qualite-de-vie-au-travail-pour-son-etablissement.html'];
+//Sample
+//   const items = [
+//     { url: 'https://www.comundi.fr/formation-achat-public/grand-forum-des-marches-publics-2018.html' },
+//     { url: 'https://www.comundi.fr/formation-droit-des-societes/formation-le-redressement-judiciaire-et-la-mise-en-liquidation-d-une-societe.html' },
+//     { url: 'https://www.comundi.fr/formation-evaluation-et-demarches-qualite/formation-mettre-en-place-une-evaluation-externe.html' },
+//     { url: 'https://www.comundi.fr/formation-pilotage-strategique-et-management-des-etablissements/formation-piloter-un-projet-systemique-de-qualite-de-vie-au-travail-pour-son-etablissement.html },
+//   ];
 
-  console.log(items);
-  console.log(`Got #${items.length} items`);
 
-  const itemBatches = _.chunk(items, 100);
-  await loopBatches(itemBatches, async (items) => {
-    return loopSequence(async (prevRes, i, batch) => {
-      console.log(`--> ${i}`);
-      const res = await browseItem(browser, batch[i]);
-      return [...prevRes, res];
-    }, items, async (res, i, batch) => {
-      if (i >= batch.length - 1) {
-        return false;
-      }
-      return true;
-    }, async (res) => {
-       console.log(`Got #${res.length} items`);
-       console.log(res);
-       return res;
-    }, 0, []);
-  }, async (res) => {
-    console.log(`Saved #${res.length} items`);
-    return res;
-  })
+const items = await db.collection('comundiItems').find({}).toArray();
+console.log(`Got #${items.length} items`);
+
+
+//const itemBatches = _.chunk(items, 400);
+//await loopBatches(itemBatches, async (items) => {
+// return loopSequence(async (prevRes, i, batch) => {
+//   console.log(`Processing ITEM -->${i}`);
+//   console.log(`Url--> ${batch[i].url}`);
+//   const res = await browseItem(browser, batch[i].url);
+//   return [...prevRes, res];
+// }, items, async (item, i, batch) => {
+//   console.log(`Saving item --> ${i}...`);
+//   await db.collection('comundi').insertOne(item);
+//   console.log(`item --> ${i} Saved`);
+//   if (i >= items.length - 1) {
+//     return false;
+//   }
+//   return true;
+// }, async () => {
+//   console.log('Done');
+// }, 0, []);
+//}, async (res) => {
+// console.log(`Saved #${res.length} items`);
+// return res;
+//})
+
+
+const itemBatches = _.chunk(items, 400);
+
+Promise.all(itemBatches.map((items) => {
+  return loopSequence(async (prevRes, i, batch) => {
+    console.log(`Processing ITEM -->${i}`);
+    console.log(`Url--> ${batch[i].url}`);
+    try {
+      const res = await browseItem(browser, batch[i].url);
+      return res;
+    } catch (e) {
+      return -1;
+    }
+  }, items, async (item, i, items) => {
+    if (item !== -1) {
+      console.log(`Saving item --> ${i}...`);
+      await db.collection('comundi').insertOne(item);
+      console.log(`item --> ${i} Saved`);
+    } else {
+      console.log('ERROR OCCURED (CATCHED)');
+    }
+    if (i >= items.length - 1) {
+      return false;
+    }
+    return true;
+  }, () => {
+    console.log('DONE');
+  }, 0, []);
+}));
 
 })();
