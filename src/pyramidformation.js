@@ -79,6 +79,7 @@ const monthsMap = {
 };
 
 const browseItem = async (browser, url) => {
+  console.log('Item: ', url);
   const page = await browser.newPage();
   await page.goto(url);
 
@@ -199,7 +200,7 @@ const browseItem = async (browser, url) => {
   const goal = await getText(page, 'div.clearfix.text-formatted.field.field--name-objectives.field--type-text-long.field--label-above > div.field__item');
   let requirements = await getText(page, 'div.clearfix.text-formatted.field.field--name-prerequisite.field--type-text-long.field--label-above > div.field__item');
   let competence_acquises = null;
-  if (requirements.split('Compétences acquises:').length > 1) {
+  if (requirements && requirements.split('Compétences acquises:').length > 1) {
     competence_acquises = requirements.split('Compétences acquises:')[1];
   }
   let priceHt = await getText(page, '#edit-company-markup-b2b');
@@ -265,9 +266,9 @@ const browseBatchAndGoNext = async (browser, batches, index, lastRes, db) => {
   // // CAS AVEC START DATE === ENDDATE
   // const p = await browseItem(browser, 'https://pyramyd-formation.com/formation/photo-prise-de-vues-avec-un-smartphone');
   // non certifiée non pcf
-  const p = await browseItem(browser, 'https://pyramyd-formation.com/formation/concevoir-une-maquette-graphique-pour-le-web');
-  console.log(p);
-  return;
+  // const p = await browseItem(browser, 'https://pyramyd-formation.com/formation/concevoir-une-maquette-graphique-pour-le-web');
+  // console.log(p);
+  // return;
   // console.log(r0);
   // console.log(r);
   // console.log(r1);
