@@ -19,7 +19,7 @@ const _ = require('lodash');
   const db = client.db(dbName);
 
   const col = db.collection('pyramyd-formation');
-  const arr = await col.find().limit(40).toArray();
+  const arr = await col.find().toArray();
   const res = arr.map((elem) => {
     const orignItem = elem;
     orignItem.categories = orignItem.categories.join(',');
@@ -42,6 +42,7 @@ const _ = require('lodash');
   });
 
   const flat = _.flattenDeep(res);
+  console.log(flat.length);
 
   // flat.forEach((e) => {
   //   console.log(`e.cats: ${e.categories}, e.begin: ${e.begin}, e.end: ${e.end}, e.url: ${e.url}\n`);
