@@ -27,6 +27,7 @@ const getFormateurs = (page) => {
 };
 
 const browseItem = async (browser, url) => {
+  console.log('Browsing', url);
   const page = await browser.newPage();
   await page.goto(url);
 
@@ -78,7 +79,11 @@ const browseItem = async (browser, url) => {
       dates = _.flattenDeep(dates);
       // session.allDates = dates;
       session.begin = dates[0];
+      session.begin.dateTz = session.begin.date;
+      session.begin.date = moment(session.begin.date).hours(09).minutes(00).format('YYYY-MM-DD[T]HH:mm:ss');
       session.end = dates[dates.length - 1];
+      session.end.dateTz = session.end.date;
+      session.end.date = moment(session.end.date).hours(17).minutes(30).format('YYYY-MM-DD[T]HH:mm:ss');
     });
   }
 
@@ -139,7 +144,7 @@ const browseBatchAndGoNext = async (browser, batches, index, lastRes, db) => {
   const res = await Promise.all(batches[index].map((itemUrl) => browseItem(browser, itemUrl)));
   const result = res;
   console.log(`Saving results... [${index}]:`, result.length);
-  await db.collection('elegia').insertMany(result);
+  await db.collection('elegia2').insertMany(result);
   console.log(`SAVED batch ${index + 1} of ${batches.length}`);
   return browseBatchAndGoNext(browser, batches, index + 1, result, db);
 };
@@ -223,7 +228,7 @@ const parseDate = (dateString, format) => {
   // const item = await browseItem(browser, 'https://www.elegia.fr/formations/etre-responsable-ressources-humaines-rrh_119005');
   // const item2 = await browseItem(browser, 'https://www.elegia.fr/formations/arreter-cloturer-comptes-annuels_550004-0');
   // const item3 = await browseItem(browser, 'https://www.elegia.fr/formations/actualite-sociale-2018-atelier-negociation-collective-integrer-nouvelles-obligations_600539#dates-et-lieux');
-  // console.log(item);
-  // console.log(item2);
-  // console.log(item3);
+  // console.log(item.sessions);
+  // console.log(item2.sessions);
+  // console.log(item3.sessions);
 })();
