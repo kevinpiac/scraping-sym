@@ -39,6 +39,12 @@ const getText = (page, selector) => {
   }, selector);
 };
 
+const exists = (page, selector) => {
+  return page.evaluate((selector) => {
+    return document.querySelector(selector) ? 1 : 0;
+  }, selector);
+};
+
 const moment = require('moment');
 
 const parseDate = (string, format, hours, minutes) => {
@@ -184,6 +190,8 @@ const browseItem = async (browser, url) => {
       });
     });
   }
+  const isCertified = await exists(page, '.field.field--name-certified.field--type-boolean.field--label-hidden.field__item > .on');
+  const cpf = await exists(page, '.field.field--name-cpf.field--type-boolean.field--label-hidden.field__item > .on');
   const level = await getText(page, 'body > main > div > div.group-content.layout-center.layout-center--mobile.clearfix > div > div.group-left > div > div > div > div.field.field--name-level-of-difficulty.field--type-entity-reference.field--label-hidden.field__item > div');
   const duration = await getText(page, 'body > main > div > div.group-content.layout-center.layout-center--mobile.clearfix > div > div.group-left > div > div > div > div.field.field--name-duration-of-training.field--type-string.field--label-hidden.field__item');
   const location = await getText(page, 'body > main > div > div.group-content.layout-center.layout-center--mobile.clearfix > div > div.group-left > div > div > div > div.field.field--name-location-of-training.field--type-entity-reference.field--label-hidden.field__items > div > div');
@@ -202,6 +210,8 @@ const browseItem = async (browser, url) => {
   const program = await getText(page, 'body > main > div > div.group-content.layout-center.layout-center--mobile.clearfix > div > div.group-left > div > div > div > div.clearfix.text-formatted.field.field--name-program.field--type-entity-reference-revisions.field--label-above > div.field__items > div > div > div > div');
   const item = {
     url,
+    isCertified,
+    cpf,
     competence_acquises,
     sessions,
     title,
@@ -249,11 +259,13 @@ const browseBatchAndGoNext = async (browser, batches, index, lastRes, db) => {
   // const r = await browseItem(browser, 'https://pyramyd-formation.com/formation/l-experience-utilisateur-ux-les-meilleures-pratiques');
   // const r1 = await browseItem(browser, 'https://pyramyd-formation.com/formation/charge-de-conception-et-de-realisation-web-0');
 
-  const p = await browseItem(browser, 'https://pyramyd-formation.com/formation/charge-de-creation-web-0'); // CAS ENVOYé PAR EMAIL
+  // const p = await browseItem(browser, 'https://pyramyd-formation.com/formation/charge-de-creation-web-0'); // CAS ENVOYé PAR EMAIL
   // //https://pyramyd-formation.com/formation/indesign-niveau-1-1
 
   // // CAS AVEC START DATE === ENDDATE
   // const p = await browseItem(browser, 'https://pyramyd-formation.com/formation/photo-prise-de-vues-avec-un-smartphone');
+  // non certifiée non pcf
+  const p = await browseItem(browser, 'https://pyramyd-formation.com/formation/concevoir-une-maquette-graphique-pour-le-web');
   console.log(p);
   return;
   // console.log(r0);
