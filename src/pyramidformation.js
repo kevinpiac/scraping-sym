@@ -41,15 +41,20 @@ const getText = (page, selector) => {
 
 const moment = require('moment');
 
-const parseDate = (string, format) => {
+const parseDate = (string, format, hours, minutes) => {
+  console.log(string);
   const dateString = string.replace('é', 'e');
-  const m = moment(dateString, format, 'fr');
+  const m = moment(dateString, format, 'fr').hours(hours).minutes(minutes);
   console.log('---> parsed', dateString, ' ==== ', m.format());
-  return {
-    date: moment(m).format(),
+  const res = {
+    date: moment(m).format('YYYY-MM-DD[T]HH:mm:ss'),
+    dateTz: moment(m).format(),
     timestamp: moment(m).format('X'),
     text: moment(m).format('dddd Do MMMM YYYY'),
   };
+  console.log(res);
+  console.log('\n\n');
+  return res;
 };
 
 const monthsMap = {
@@ -116,7 +121,7 @@ const browseItem = async (browser, url) => {
   if (sessions && sessions.length) {
     sessions.forEach((session) => {
       const dates = session.dates.map((date) => {
-        const pattern1 = /^[0-9]{2}.{0,6}\b [a-z-A-Z]{0,2} [0-9]{2}.{0,6} [0-9]{4}$/ // 04 et 05 déc. 2018 OR 03 au 08 déc. 2018
+        const pattern1 = /^[0-9]{2}.{0,2}\b [a-z-A-Z]{0,2} [0-9]{2}.{0,6} [0-9]{4}$/ // 04 et 05 déc. 2018 OR 03 au 08 déc. 2018
         const pattern2 = /^[0-9]{2}\b .{1,5} \b[0-9]{4}$/ // 06 nov. 2018 OR 06 nov 2019 08 NOV 2019 OR 08 NOV. 2019
         const pattern3 = /^[0-9]{2} .{0,6} [0-9]{1,4} [a-zA-Z]{1,3} [0-9]{2} .{0,6} [0-9]{4}$/ // 25 sept. 2019 au 15 janv. 2020
         const pattern4 = /^[0-9]{2} .{1,6} [a-z]{2} [0-9]{2} .{1,9} [0-9]{4}$/ // 14 janv. au 05 juin 2019 31 janv. et 01 févr. 2019
@@ -173,8 +178,8 @@ const browseItem = async (browser, url) => {
           session.formatedDates = [];
         }
         session.formatedDates.push({
-          begin: parseDate(dateStart, 'DD MM YYYY'),
-          end: parseDate(dateEnd, 'DD MM YYYY'),
+          begin: parseDate(dateStart, 'DD MM YYYY', 09, 00),
+          end: parseDate(dateEnd, 'DD MM YYYY', 17, 30),
         })
       });
     });
@@ -183,8 +188,12 @@ const browseItem = async (browser, url) => {
   const duration = await getText(page, 'body > main > div > div.group-content.layout-center.layout-center--mobile.clearfix > div > div.group-left > div > div > div > div.field.field--name-duration-of-training.field--type-string.field--label-hidden.field__item');
   const location = await getText(page, 'body > main > div > div.group-content.layout-center.layout-center--mobile.clearfix > div > div.group-left > div > div > div > div.field.field--name-location-of-training.field--type-entity-reference.field--label-hidden.field__items > div > div');
   const public = await getText(page, 'body > main > div > div.group-content.layout-center.layout-center--mobile.clearfix > div > div.group-left > div > div > div > div.clearfix.text-formatted.field.field--name-concerned-public.field--type-text-long.field--label-above > div.field__item');
-  const goal = await getText(page, 'body > main > div > div.group-content.layout-center.layout-center--mobile.clearfix > div > div.group-left > div > div > div > div.clearfix.text-formatted.field.field--name-objectives.field--type-text-long.field--label-above > div.field__item > p');
-  const requirements = await getText(page, 'body > main > div > div.group-content.layout-center.layout-center--mobile.clearfix > div > div.group-left > div > div > div > div.clearfix.text-formatted.field.field--name-prerequisite.field--type-text-long.field--label-above > div.field__item > p');
+  const goal = await getText(page, 'div.clearfix.text-formatted.field.field--name-objectives.field--type-text-long.field--label-above > div.field__item');
+  let requirements = await getText(page, 'div.clearfix.text-formatted.field.field--name-prerequisite.field--type-text-long.field--label-above > div.field__item');
+  let competence_acquises = null;
+  if (requirements.split('Compétences acquises:').length > 1) {
+    competence_acquises = requirements.split('Compétences acquises:')[1];
+  }
   let priceHt = await getText(page, '#edit-company-markup-b2b');
   if (priceHt) {
     priceHt = priceHt.split('€')[0];
@@ -193,6 +202,7 @@ const browseItem = async (browser, url) => {
   const program = await getText(page, 'body > main > div > div.group-content.layout-center.layout-center--mobile.clearfix > div > div.group-left > div > div > div > div.clearfix.text-formatted.field.field--name-program.field--type-entity-reference-revisions.field--label-above > div.field__items > div > div > div > div');
   const item = {
     url,
+    competence_acquises,
     sessions,
     title,
     categories,
@@ -238,7 +248,14 @@ const browseBatchAndGoNext = async (browser, batches, index, lastRes, db) => {
   // const r0 = await browseItem(browser, 'https://pyramyd-formation.com/formation/photo-prise-de-vues-avec-un-smartphone')//https://pyramyd-formation.com/formation/l-experience-utilisateur-ux-les-meilleures-pratiques');
   // const r = await browseItem(browser, 'https://pyramyd-formation.com/formation/l-experience-utilisateur-ux-les-meilleures-pratiques');
   // const r1 = await browseItem(browser, 'https://pyramyd-formation.com/formation/charge-de-conception-et-de-realisation-web-0');
+
+  const p = await browseItem(browser, 'https://pyramyd-formation.com/formation/charge-de-creation-web-0'); // CAS ENVOYé PAR EMAIL
   // //https://pyramyd-formation.com/formation/indesign-niveau-1-1
+
+  // // CAS AVEC START DATE === ENDDATE
+  // const p = await browseItem(browser, 'https://pyramyd-formation.com/formation/photo-prise-de-vues-avec-un-smartphone');
+  console.log(p);
+  return;
   // console.log(r0);
   // console.log(r);
   // console.log(r1);
