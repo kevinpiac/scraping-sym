@@ -7,6 +7,7 @@ const assert = require('assert');
 
 const puppeteer = require('puppeteer');
 const _ = require('lodash');
+const uuidv1 = require('uuid/v1');
 
 (async () => {
   const url = 'mongodb://mrsoyer:adty5M-cj@ds145620-a1.mlab.com:45620/sym';
@@ -32,6 +33,7 @@ const _ = require('lodash');
           return {
             begin: date.begin.date,
             end: date.end.date,
+            sessionId: uuidv1(),
             ...orignItem,
           };
         });
@@ -95,11 +97,12 @@ const _ = require('lodash');
       { label: 'Programme', name: 'program' },
       { label: 'Date Début', name: 'begin' },
       { label: 'Date Fin', name: 'end' },
+      { label: 'Réf Session', name: 'sessionId' },
     ],
     fieldSeparator : ';'
   };
 
-  var out = fs.createWriteStream("pyramyd-output.csv", {encoding: 'utf8'})
+  var out = fs.createWriteStream("pyramyd-output2.csv", {encoding: 'utf8'})
   var readable = es.readArray(items)
   readable
     .pipe(jsoncsv.csv(options))
