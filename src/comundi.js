@@ -30,7 +30,7 @@ const getTextByRegex = (page, params) => {
 
 const parseDate = (string, format, hours, minutes) => {
   console.log(string);
-  const dateString = string.replace('é', 'e');
+  const dateString = string;
   const m = moment(dateString, format, 'fr').hours(hours).minutes(minutes);
   console.log('---> parsed', dateString, ' ==== ', m.format());
   const res = {
