@@ -381,18 +381,18 @@ const loopBatches = async (batches, apply, onEnd) => {
 
 
 //Sample
-   const items = [
-     { url: 'https://www.comundi.fr/formation-gpec-1/formation-optimisez-vos-achats-de-formation.html'},
-     { url: 'https://www.comundi.fr/formation-evaluation-et-demarches-qualite/formation-mettre-en-place-une-evaluation-externe.html' },
-     // { url: 'https://www.comundi.fr/formation-epreuves-filiere-technique/concours-d-ingenieur-e-territorial-par-voie-externe-ecrit.html'},
-     // { url: 'https://www.comundi.fr/formation-achat-public/grand-forum-des-marches-publics-2018.html' },
-     // { url: 'https://www.comundi.fr/formation-droit-des-societes/formation-le-redressement-judiciaire-et-la-mise-en-liquidation-d-une-societe.html' },
-     // { url: 'https://www.comundi.fr/formation-evaluation-et-demarches-qualite/formation-mettre-en-place-une-evaluation-externe.html' },
-     // { url: 'https://www.comundi.fr/formation-pilotage-strategique-et-management-des-etablissements/formation-piloter-un-projet-systemique-de-qualite-de-vie-au-travail-pour-son-etablissement.html' },
-   ];
+   // const items = [
+   //   { url: 'https://www.comundi.fr/formation-gpec-1/formation-optimisez-vos-achats-de-formation.html'},
+   //   { url: 'https://www.comundi.fr/formation-evaluation-et-demarches-qualite/formation-mettre-en-place-une-evaluation-externe.html' },
+   //   // { url: 'https://www.comundi.fr/formation-epreuves-filiere-technique/concours-d-ingenieur-e-territorial-par-voie-externe-ecrit.html'},
+   //   // { url: 'https://www.comundi.fr/formation-achat-public/grand-forum-des-marches-publics-2018.html' },
+   //   // { url: 'https://www.comundi.fr/formation-droit-des-societes/formation-le-redressement-judiciaire-et-la-mise-en-liquidation-d-une-societe.html' },
+   //   // { url: 'https://www.comundi.fr/formation-evaluation-et-demarches-qualite/formation-mettre-en-place-une-evaluation-externe.html' },
+   //   // { url: 'https://www.comundi.fr/formation-pilotage-strategique-et-management-des-etablissements/formation-piloter-un-projet-systemique-de-qualite-de-vie-au-travail-pour-son-etablissement.html' },
+   // ];
 
 
-// const items = await db.collection('comundiItems').find({}).toArray();
+const items = await db.collection('comundiItems').find({}).toArray();
 console.log(`Got #${items.length} items`);
 
 
