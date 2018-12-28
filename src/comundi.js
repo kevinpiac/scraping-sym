@@ -86,7 +86,7 @@ const browseItem = async (browser, url) => {
         let yearStart = null;
         let yearEnd = null;
         const pattern1 = /^Du [0-9]{2}.{0,2}\b [a-z-A-Z]{0,2} [0-9]{2}.{0,6} [0-9]{4}$/; // Du 22 au 23 janvier 2019
-        if (dateString.trim().match(pattern1)) {
+        if (session.startDate.trim().match(pattern1)) {
           console.log(date, '--- Matches p1');
           daystart = s[1];
           dayend = s[3];
