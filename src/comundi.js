@@ -5,6 +5,7 @@ const assert = require('assert');
 const puppeteer = require('puppeteer');
 const _ = require('lodash');
 const moment = require('moment');
+moment.locale('fr');
 
 const baseUrl = 'https://www.comundi.fr/';
 
