@@ -27,14 +27,20 @@ const getTextByRegex = (page, params) => {
   }, params);
 };
 
-const parseDate = (dateString, format) => {
-  const m = moment(dateString, format, 'fr');
+const parseDate = (string, format, hours, minutes) => {
+  console.log(string);
+  const dateString = string.replace('é', 'e');
+  const m = moment(dateString, format, 'fr').hours(hours).minutes(minutes);
   console.log('---> parsed', dateString, ' ==== ', m.format());
-  return {
-    date: moment(m).format(),
+  const res = {
+    date: moment(m).format('YYYY-MM-DD[T]HH:mm:ss'),
+    dateTz: moment(m).format(),
     timestamp: moment(m).format('X'),
     text: moment(m).format('dddd Do MMMM YYYY'),
   };
+  console.log(res);
+  console.log('\n\n');
+  return res;
 };
 
 const browseItem = async (browser, url) => {
@@ -62,12 +68,12 @@ const browseItem = async (browser, url) => {
   });
   sessions.forEach((session) => {
     if (session.startDate) {
-      session.begin = parseDate(session.startDate, 'YYYY-MM-DD');
+      session.begin = parseDate(session.startDate, 'YYYY-MM-DD', 09, 00);
     } else {
       session.begin = null;
     }
     if (session.endDate) {
-      session.end = parseDate(session.endDate, 'YYYY-MM-DD');
+      session.end = parseDate(session.endDate, 'YYYY-MM-DD', 17, 30);
     } else {
       session.end = session.begin;
     }
@@ -143,7 +149,7 @@ const browseItem = async (browser, url) => {
   const getAllParentCategories = async (page, categories, i) => {
     const category = await getParentCategory(page);
     console.log('Category', i, ':', category);
-    if (category) {
+    if (category && category.name !== 'Thèmes des formations') {
       categories.push(category);
       await page.goto(category.url);
       await page.waitForSelector('#wo-breadcrumbs');
@@ -267,7 +273,7 @@ const loopBatches = async (batches, apply, onEnd) => {
 
   const db = client.db(dbName);
 
-  const browser = await puppeteer.launch({ headless: true });
+  const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] });
 
 // FETCH ALL ITEMS AND STORE IN DB
 //  const categories = await getAllCategoryLinksSequence(browser);
@@ -377,12 +383,13 @@ Promise.all(itemBatches.map((items) => {
       const res = await browseItem(browser, batch[i].url);
       return res;
     } catch (e) {
+      console.log(e);
       return -1;
     }
   }, items, async (item, i, items) => {
     if (item !== -1) {
       console.log(`Saving item --> ${i}...`);
-      await db.collection('comundi').insertOne(item);
+      await db.collection('comundi-v2').insertOne(item);
       console.log(`item --> ${i} Saved`);
     } else {
       console.log('ERROR OCCURED (CATCHED)');
