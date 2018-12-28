@@ -94,7 +94,7 @@ const browseItem = async (browser, url) => {
         yearStart = s[5];
         yearEnd = yearStart;
         session.begin = parseDate(`${yearStart}-${monthStart}-${daystart}`, 'YYYY-MMMM-DD', 09, 00);
-        session.end = parseDate(`${yearEnd}-${monthEnd}-${dayEnd}`, 'YYYY-MMMM-DD', 17, 30);
+        session.end = parseDate(`${yearEnd}-${monthEnd}-${dayend}`, 'YYYY-MMMM-DD', 17, 30);
       }
     } else {
       if (session.startDate) {
