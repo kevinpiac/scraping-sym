@@ -76,36 +76,37 @@ const browseItem = async (browser, url) => {
     });
   });
   sessions.forEach((session) => {
-    if (session.startDate) {
-      if (session.isString) {
-        const s = session.startDate.trim().split(' ');
-        let daystart = null;
-        let dayend = null;
-        let monthStart = null;
-        let monthEnd = null
-        let yearStart = null;
-        let yearEnd = null;
-        const pattern1 = /^Du [0-9]{2}.{0,2}\b [a-z-A-Z]{0,2} [0-9]{2}.{0,2} .{0,20} [0-9]{4}$/; // Du 22 au 23 janvier 2019
-        if (session.startDate.trim().match(pattern1)) {
-          console.log(session.startDate, '--- Matches p1');
-          daystart = s[1];
-          dayend = s[3];
-          monthStart = s[4];
-          monthEnd = monthStart;
-          yearStart = s[5];
-          yearEnd = yearStart;
-          session.begin = parseDate(`${yearStart}-${monthStart}-${daystart}`, 'YYYY-MMMM-DD', 09, 00);
-        }
-      } else {
-        session.begin = parseDate(session.startDate, 'YYYY-MM-DD', 09, 00);
+    if (session.isString) {
+      const s = session.startDate.trim().split(' ');
+      let daystart = null;
+      let dayend = null;
+      let monthStart = null;
+      let monthEnd = null
+      let yearStart = null;
+      let yearEnd = null;
+      const pattern1 = /^Du [0-9]{2}.{0,2}\b [a-z-A-Z]{0,2} [0-9]{2}.{0,2} .{0,20} [0-9]{4}$/; // Du 22 au 23 janvier 2019
+      if (session.startDate.trim().match(pattern1)) {
+        console.log(session.startDate, '--- Matches p1');
+        daystart = s[1];
+        dayend = s[3];
+        monthStart = s[4];
+        monthEnd = monthStart;
+        yearStart = s[5];
+        yearEnd = yearStart;
+        session.begin = parseDate(`${yearStart}-${monthStart}-${daystart}`, 'YYYY-MMMM-DD', 09, 00);
+        session.end = parseDate(`${yearEnd}-${monthEnd}-${dayEnd}`, 'YYYY-MMMM-DD', 17, 30);
       }
     } else {
-      session.begin = null;
-    }
-    if (session.endDate) {
-      session.end = parseDate(session.endDate, 'YYYY-MM-DD', 17, 30);
-    } else {
-      session.end = session.begin;
+      if (session.startDate) {
+        session.begin = parseDate(session.startDate, 'YYYY-MM-DD', 09, 00);
+      } else {
+        session.begin = null;
+      }
+      if (session.endDate) {
+        session.end = parseDate(session.endDate, 'YYYY-MM-DD', 17, 30);
+      } else {
+        session.end = session.begin;
+      }
     }
   });
 
