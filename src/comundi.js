@@ -54,6 +54,8 @@ const browseItem = async (browser, url) => {
     .map(e => {
       const startDateSel = e.querySelector('span[itemprop="startDate"]')
       const endDateSel = e.querySelector('span[itemprop="endDate"]')
+      const datestringSel = e.querySelector('tr:nth-child(1) > th > div');
+      let dateString = null;
       const location = e.attributes['data-ville'].value;
       let startDate = null;
       if (startDateSel && startDateSel.attributes && startDateSel.attributes.content) {
@@ -63,12 +65,40 @@ const browseItem = async (browser, url) => {
       if (endDateSel && endDateSel.attributes && endDateSel.attributes.content) {
         endDate = endDateSel.attributes.content.value;
       }
-      return { startDate, endDate, location };
+
+      let isString = false;
+      // If old format selector not working
+      if (!startDate && datestringSel) {
+        startDate = datestringSel.innerText;
+        isString = true;
+      }
+      return { startDate, endDate, location, isString };
     });
   });
   sessions.forEach((session) => {
     if (session.startDate) {
-      session.begin = parseDate(session.startDate, 'YYYY-MM-DD', 09, 00);
+      if (session.isString) {
+        const s = session.startDate.trim().split(' ');
+        let daystart = null;
+        let dayend = null;
+        let monthStart = null;
+        let monthEnd = null
+        let yearStart = null;
+        let yearEnd = null;
+        const pattern1 = /^Du [0-9]{2}.{0,2}\b [a-z-A-Z]{0,2} [0-9]{2}.{0,6} [0-9]{4}$/; // Du 22 au 23 janvier 2019
+        if (dateString.trim().match(pattern1)) {
+          console.log(date, '--- Matches p1');
+          daystart = s[1];
+          dayend = s[3];
+          monthStart = s[4];
+          monthEnd = monthStart;
+          yearStart = s[5];
+          yearEnd = yearStart;
+          session.begin = parseDate(`${yearStart}-${monthStart}-${daystart}`, 'YYYY-MMMM-DD', 09, 00);
+        }
+      } else {
+        session.begin = parseDate(session.startDate, 'YYYY-MM-DD', 09, 00);
+      }
     } else {
       session.begin = null;
     }
@@ -274,6 +304,7 @@ const loopBatches = async (batches, apply, onEnd) => {
   const db = client.db(dbName);
 
   const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] });
+  // const browser = await puppeteer.launch({ headless: true });
 
 // FETCH ALL ITEMS AND STORE IN DB
 //  const categories = await getAllCategoryLinksSequence(browser);
@@ -338,11 +369,12 @@ const loopBatches = async (batches, apply, onEnd) => {
 
 //Sample
    const items = [
-     { url: 'https://www.comundi.fr/formation-epreuves-filiere-technique/concours-d-ingenieur-e-territorial-par-voie-externe-ecrit.html'},
-     { url: 'https://www.comundi.fr/formation-achat-public/grand-forum-des-marches-publics-2018.html' },
-     { url: 'https://www.comundi.fr/formation-droit-des-societes/formation-le-redressement-judiciaire-et-la-mise-en-liquidation-d-une-societe.html' },
-     { url: 'https://www.comundi.fr/formation-evaluation-et-demarches-qualite/formation-mettre-en-place-une-evaluation-externe.html' },
-     { url: 'https://www.comundi.fr/formation-pilotage-strategique-et-management-des-etablissements/formation-piloter-un-projet-systemique-de-qualite-de-vie-au-travail-pour-son-etablissement.html' },
+     { url: 'https://www.comundi.fr/formation-gpec-1/formation-optimisez-vos-achats-de-formation.html'},
+     // { url: 'https://www.comundi.fr/formation-epreuves-filiere-technique/concours-d-ingenieur-e-territorial-par-voie-externe-ecrit.html'},
+     // { url: 'https://www.comundi.fr/formation-achat-public/grand-forum-des-marches-publics-2018.html' },
+     // { url: 'https://www.comundi.fr/formation-droit-des-societes/formation-le-redressement-judiciaire-et-la-mise-en-liquidation-d-une-societe.html' },
+     // { url: 'https://www.comundi.fr/formation-evaluation-et-demarches-qualite/formation-mettre-en-place-une-evaluation-externe.html' },
+     // { url: 'https://www.comundi.fr/formation-pilotage-strategique-et-management-des-etablissements/formation-piloter-un-projet-systemique-de-qualite-de-vie-au-travail-pour-son-etablissement.html' },
    ];
 
 
