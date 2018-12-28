@@ -86,6 +86,7 @@ const browseItem = async (browser, url) => {
       let yearStart = null;
       let yearEnd = null;
       const pattern1 = /^Du [0-9]{2}.{0,2}\b [a-z-A-Z]{0,2} [0-9]{2}.{0,2} .{0,20} [0-9]{4}$/; // Du 22 au 23 janvier 2019
+      const pattern2 = /^Le [0-9]{2} .{0,20} [0-9]{4}$/ // Le 22 février 2019
       if (session.startDate.trim().match(pattern1)) {
         console.log(session.startDate, '--- Matches p1');
         daystart = s[1];
@@ -93,6 +94,16 @@ const browseItem = async (browser, url) => {
         monthStart = s[4];
         monthEnd = monthStart;
         yearStart = s[5];
+        yearEnd = yearStart;
+        session.begin = parseDate(`${yearStart}-${monthStart}-${daystart}`, 'YYYY-MMMM-DD', 09, 00);
+        session.end = parseDate(`${yearEnd}-${monthEnd}-${dayend}`, 'YYYY-MMMM-DD', 17, 30);
+      } else if (session.startDate.trim().match(pattern2)) {
+        console.log(session.startDate, '--- Matches p2');
+        daystart = s[1];
+        dayend = s[1];
+        monthStart = s[2];
+        monthEnd = monthStart;
+        yearStart = s[3];
         yearEnd = yearStart;
         session.begin = parseDate(`${yearStart}-${monthStart}-${daystart}`, 'YYYY-MMMM-DD', 09, 00);
         session.end = parseDate(`${yearEnd}-${monthEnd}-${dayend}`, 'YYYY-MMMM-DD', 17, 30);
@@ -372,6 +383,7 @@ const loopBatches = async (batches, apply, onEnd) => {
 //Sample
    const items = [
      { url: 'https://www.comundi.fr/formation-gpec-1/formation-optimisez-vos-achats-de-formation.html'},
+     { url: 'https://www.comundi.fr/formation-evaluation-et-demarches-qualite/formation-mettre-en-place-une-evaluation-externe.html' },
      // { url: 'https://www.comundi.fr/formation-epreuves-filiere-technique/concours-d-ingenieur-e-territorial-par-voie-externe-ecrit.html'},
      // { url: 'https://www.comundi.fr/formation-achat-public/grand-forum-des-marches-publics-2018.html' },
      // { url: 'https://www.comundi.fr/formation-droit-des-societes/formation-le-redressement-judiciaire-et-la-mise-en-liquidation-d-une-societe.html' },
